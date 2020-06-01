@@ -201,12 +201,9 @@ function initMap() {
     ]
     map = new google.maps.Map(document.getElementById('map'), {
         center: losAngeles,
-        zoom: 30,
-        style: lightTheme, mapTypeControlOptions: {
-            mapTypeIds: ['roadmap', 'satellite', 'hybrid', 'terrain',
-                'styled_map']
-        }
+        zoom: 10, icon: "icons8-online-store-64.png"
     })
+    map.setOptions({ styles: lightTheme });
     var themebutton = document.querySelector('.theme');
     themebutton.innerHTML = themeType;
     let isLight = true;
@@ -216,7 +213,8 @@ function initMap() {
             themebutton.classList.add('dark')
             map.setOptions({ styles: darkTheme })
             isLight = false;
-            themeType = 'Light Theme'; themebutton.innerHTML = themeType;
+            themeType = 'Light Theme';
+            themebutton.innerHTML = themeType;
         } else {
             themebutton.classList.remove("dark")
             themebutton.classList.add('light')
@@ -226,11 +224,45 @@ function initMap() {
     })
 
     infoWindow = new google.maps.InfoWindow();
-
-    displayStores()
-    showMarkers()
+    searchStores();
 }
-function showMarkers() {
+
+function searchStores() {
+    var foundStores = [];
+    var zipCode = document.getElementById('zip-code-input').value;
+    if (zipCode) {
+        stores.forEach(function (store) {
+            var postal = store.address.postalCode.substring(0, 5);
+            if (postal == zipCode) {
+                foundStores.push(store);
+            }
+        });
+    } else {
+        foundStores = stores;
+    }
+    clearLocations()
+    displayStores(foundStores);
+    showMarkers(foundStores);
+    setOnClickListener();
+}
+function clearLocations() {
+    infoWindow.close();
+    for (var i = 0; i < markers.length; i++) {
+        markers[i].setMap(null);
+    }
+    markers.length = 0;
+}
+
+
+function setOnClickListener() {
+    var storeElements = document.querySelectorAll('.store-container');
+    storeElements.forEach(function (elem, index) {
+        elem.addEventListener('click', function () {
+            google.maps.event.trigger(markers[index], 'click');
+        })
+    });
+}
+function showMarkers(stores) {
     var bounds = new google.maps.LatLngBounds();
     stores.forEach(function (store, index) {
         var latlng = new google.maps.LatLng(
@@ -246,24 +278,34 @@ function showMarkers() {
     })
     map.fitBounds(bounds);
 }
-var la = {
-    lat: 34.063380,
-    lng: -118.358080
-}
-let pos = navigator.geolocation.getCurrentPosition(function (position) {
-    var pos = {
-        lat: position.coords.latitude,
-        lng: position.coords.longitude
-    };
-})
-function createMarker(latlng, name, address, index, open, phone) {
 
-    var html = `<b class='name'> ${name} </b> <br/> <div class="open-status">${open}</div><br/><div class="address">   <a href="https://www.google.com/maps/dir/?api=1&origin=${pos}&destination=${latlng}"><i class="fas fa-location-arrow"></i></a> ${address}</div><br/><div class='phone'><i class="fas fa-phone-alt"></i>${phone}</div>`;
+
+function createMarker(latlng, name, address, index, open, phone) {
+    let pos = navigator.geolocation.getCurrentPosition(function (position) {
+        var pos = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+        };
+    })
+    var icon = {
+        url: "icon.png", // url
+        scaledSize: new google.maps.Size(50, 50), // scaled size
+        origin: new google.maps.Point(0, 0), // origin
+        anchor: new google.maps.Point(0, 0) // anchor
+    };
+
+    var html = `<b class='name'> ${name} </b> <br/> <div class="open-status">${open}</div><br/>
+    <div class="address"> 
+      <a class="info" href="https://www.google.com/maps/dir/?api=1&origin=${pos}&destination=${latlng}">
+    <i class="fas fa-location-arrow"></i> ${address}</a></div>
+    <br/><div class='phone'><i class="fas fa-phone-alt"></i>${phone}</div>`;
     var marker = new google.maps.Marker({
         map: map,
         position: latlng,
-        label: index
+        label: { text: index, color: "maroon", },
+        icon: icon
     });
+
     google.maps.event.addListener(marker, 'click', function () {
         infoWindow.setContent(html);
         infoWindow.open(map, marker);
@@ -272,7 +314,7 @@ function createMarker(latlng, name, address, index, open, phone) {
 }
 
 
-function displayStores() {
+function displayStores(stores) {
 
     let storesHtml = ``;
     stores.forEach((store, index) => {
